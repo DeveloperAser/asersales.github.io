@@ -1,0 +1,348 @@
+"use client"
+
+import { useState, useEffect } from 'react'
+import { PlusCircle, Calendar, Users, BarChart, PhoneCall, Trash2, Edit, Save } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+
+type Prospect = {
+  id: string
+  name: string
+  status: 'New' | 'Contacted' | 'Presented' | 'Follow Up' | 'Purchased'
+  nextAction: string
+  nextActionDate: string
+  notes: string
+}
+
+const statusColors = {
+  'New': 'bg-blue-500',
+  'Contacted': 'bg-yellow-500',
+  'Presented': 'bg-purple-500',
+  'Follow Up': 'bg-orange-500',
+  'Purchased': 'bg-green-500',
+}
+
+const statusIcons = {
+  'New': Users,
+  'Contacted': PhoneCall,
+  'Presented': BarChart,
+  'Follow Up': Calendar,
+  'Purchased': PlusCircle,
+}
+
+const ParticleBackground = () => {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {[...Array(50)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute bg-white rounded-full opacity-20"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            width: `${Math.random() * 4 + 1}px`,
+            height: `${Math.random() * 4 + 1}px`,
+            animation: `float ${Math.random() * 10 + 5}s linear infinite`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+export default function AserSalesTracker() {
+  const [prospects, setProspects] = useState<Prospect[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('prospects')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
+  const [newProspect, setNewProspect] = useState({ name: '', nextAction: '', nextActionDate: '', notes: '' })
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingProspect, setEditingProspect] = useState<Prospect | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem('prospects', JSON.stringify(prospects))
+  }, [prospects])
+
+  const addProspect = () => {
+    if (newProspect.name && newProspect.nextAction && newProspect.nextActionDate) {
+      setProspects([...prospects, {
+        id: Date.now().toString(),
+        ...newProspect,
+        status: 'New'
+      }])
+      setNewProspect({ name: '', nextAction: '', nextActionDate: '', notes: '' })
+      setIsFormOpen(false)
+    }
+  }
+
+  const updateProspectStatus = (id: string, newStatus: Prospect['status']) => {
+    setProspects(prospects.map(p => 
+      p.id === id ? { ...p, status: newStatus } : p
+    ))
+  }
+
+  const deleteProspect = (id: string) => {
+    setProspects(prospects.filter(p => p.id !== id))
+  }
+
+  const editProspect = (prospect: Prospect) => {
+    setEditingProspect(prospect)
+  }
+
+  const saveEditedProspect = () => {
+    if (editingProspect) {
+      setProspects(prospects.map(p => 
+        p.id === editingProspect.id ? editingProspect : p
+      ))
+      setEditingProspect(null)
+    }
+  }
+
+  const filterProspects = (status: Prospect['status']) => 
+    prospects.filter(p => p.status === status)
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white overflow-hidden">
+      <ParticleBackground />
+      <div className="container mx-auto p-4 max-w-4xl relative z-10">
+        <motion.h1 
+          className="text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Aser Sales Tracker
+        </motion.h1>
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button 
+            onClick={() => setIsFormOpen(!isFormOpen)} 
+            className="mb-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300"
+          >
+            {isFormOpen ? 'Close Form' : 'Add New Prospect'}
+          </Button>
+        </motion.div>
+
+        <AnimatePresence>
+          {isFormOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="mb-8 bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-purple-400">Add New Prospect</CardTitle>
+                  <CardDescription className="text-gray-400">Enter details for a new sales prospect</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right text-gray-300">
+                        Name
+                      </Label>
+                      <Input
+                        id="name"
+                        value={newProspect.name}
+                        onChange={(e) => setNewProspect({...newProspect, name: e.target.value})}
+                        className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="nextAction" className="text-right text-gray-300">
+                        Next Action
+                      </Label>
+                      <Input
+                        id="nextAction"
+                        value={newProspect.nextAction}
+                        onChange={(e) => setNewProspect({...newProspect, nextAction: e.target.value})}
+                        className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="nextActionDate" className="text-right text-gray-300">
+                        Next Action Date
+                      </Label>
+                      <Input
+                        id="nextActionDate"
+                        type="date"
+                        value={newProspect.nextActionDate}
+                        onChange={(e) => setNewProspect({...newProspect, nextActionDate: e.target.value})}
+                        className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="notes" className="text-right text-gray-300">
+                        Notes
+                      </Label>
+                      <Textarea
+                        id="notes"
+                        value={newProspect.notes}
+                        onChange={(e) => setNewProspect({...newProspect, notes: e.target.value})}
+                        className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline" onClick={() => setIsFormOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
+                  <Button onClick={addProspect} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">Add Prospect</Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <Tabs defaultValue="new" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 bg-gray-800 rounded-xl p-1">
+            {(['New', 'Contacted', 'Presented', 'Follow Up', 'Purchased'] as const).map((status) => (
+              <TabsTrigger 
+                key={status} 
+                value={status.toLowerCase().replace(' ', '')}
+                className={`${statusColors[status]} text-white data-[state=active]:bg-gray-900`}
+              >
+                {status}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {(['New', 'Contacted', 'Presented', 'Follow Up', 'Purchased'] as const).map((status) => (
+            <TabsContent key={status} value={status.toLowerCase().replace(' ', '')}>
+              <motion.div 
+                className="grid gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <AnimatePresence>
+                  {filterProspects(status).map((prospect) => {
+                    const StatusIcon = statusIcons[prospect.status]
+                    return (
+                      <motion.div
+                        key={prospect.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="bg-gray-800 border-gray-700 overflow-hidden">
+                          <CardHeader className={`${statusColors[prospect.status]} text-white`}>
+                            <CardTitle className="flex items-center justify-between">
+                              <span className="flex items-center">
+                                <StatusIcon className="mr-2" />
+                                {prospect.name}
+                              </span>
+                              <div className="flex space-x-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => editProspect(prospect)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="bg-gray-800 text-white">
+                                    <DialogHeader>
+                                      <DialogTitle>Edit Prospect</DialogTitle>
+                                      <DialogDescription>Make changes to your prospect here.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                      <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="edit-name" className="text-right">Name</Label>
+                                        <Input
+                                          id="edit-name"
+                                          value={editingProspect?.name || ''}
+                                          onChange={(e) => setEditingProspect(prev => prev ? {...prev, name: e.target.value} : null)}
+                                          className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="edit-nextAction" className="text-right">Next Action</Label>
+                                        <Input
+                                          id="edit-nextAction"
+                                          value={editingProspect?.nextAction || ''}
+                                          onChange={(e) => setEditingProspect(prev => prev ? {...prev, nextAction: e.target.value} : null)}
+                                          className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="edit-nextActionDate" className="text-right">Next Action Date</Label>
+                                        <Input
+                                          id="edit-nextActionDate"
+                                          type="date"
+                                          value={editingProspect?.nextActionDate || ''}
+                                          onChange={(e) => setEditingProspect(prev => prev ? {...prev, nextActionDate: e.target.value} : null)}
+                                          className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="edit-notes" className="text-right">Notes</Label>
+                                        <Textarea
+                                          id="edit-notes"
+                                          value={editingProspect?.notes || ''}
+                                          onChange={(e) => setEditingProspect(prev => prev ? {...prev, notes: e.target.value} : null)}
+                                          className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                                        />
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button onClick={saveEditedProspect} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">Save Changes</Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                                <Button variant="ghost" size="icon" onClick={() => deleteProspect(prospect.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </CardTitle>
+                            <CardDescription className="text-gray-200">{prospect.nextAction} - {prospect.nextActionDate}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="pt-4">
+                            <Select
+                              onValueChange={(value) => updateProspectStatus(prospect.id, value as Prospect['status'])}
+                              defaultValue={prospect.status}
+                            >
+                              <SelectTrigger className="w-[180px] bg-gray-700 border-gray-600 text-white">
+                                <SelectValue placeholder="Update Status" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                                <SelectItem value="New">New</SelectItem>
+                                <SelectItem value="Contacted">Contacted</SelectItem>
+                                <SelectItem value="Presented">Presented</SelectItem>
+                                <SelectItem value="Follow Up">Follow Up</SelectItem>
+                                <SelectItem value="Purchased">Purchased</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {prospect.notes && (
+                              <div className="mt-4">
+                                <h4 className="font-semibold text-gray-300">Notes:</h4>
+                                <p className="text-gray-400">{prospect.notes}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+              </motion.div>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    </div>
+  )
+}
